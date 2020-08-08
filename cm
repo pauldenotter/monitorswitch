@@ -66,7 +66,6 @@ fi
 
 for index in ${!MONITORS[*]}
 do
-    printf "%4d: %s\n" $index ${array[$index]}
     case $OS in
         'mac' )
             ddcctl -d ${MONITORS[$index]} -i ${SOURCES[$index]}
