@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Author: github.com/cornercase
+# Written: August 8, 2020
+
+# Dependecies
+#   MacOS
+#      ddcctl - for MacOS - https://github.com/kfix/ddcctl
+#   Linux
+#      ddccontrol - for linux - https://github.com/ddccontrol/ddccontrol
+
+
+
+: '
+My little scratchpad
+# for Dell P2213 monitor
+using ddcctl, input IDs are
+ - VGA = 1
+ - DVI = 3-14
+ - DisplayPort = 15-17
+
+
+Dell P2213 EDID Serial FJ44J3CHAY6S is the left monitor (ie main).  
+ - Linux - /dev/i2c-1 = left monitor (VGA)
+ - MacOS - 1 = left monitor (DVI)
+Dell P2213 EDID Serial FJ44J26IAJ8S is the right monitor (ie secondary)  
+ - Linux - /dev/i2c-5 = right monitor (DVI)
+ - MacOS - 2 = right monitor (Displayport)
+
+'
+
+# are we in MacOS or Linux?
+if command -v ddccontrol &> /dev/null
+then
+    echo "ddccontrol found, we're in linux"
+    OS='linux'
+    MONITORS=('/dev/i2c-1' '/dev/i2c-5')
+fi
+
+if command -v ddcctl &> /dev/null
+then
+    echo "ddcctl found, we're in macos"
+    OS='mac'
+    MONITORS=(1 2)
+fi
+
+# set mac mini inputs to DVI-D on monitor 1, displayport on monitor 2
+if [ $1 = 'mm' ]
+then
+    SOURCES=(3 15)
+fi
+
+# set desktop inputs to VGA on monitor 1, DVI-D on monitor 2
+if [ $1 = 'dt' ]
+then
+    SOURCES=(1 3)
+fi
+
+if [ ${#MONITORS[*]} -ne ${#SOURCES[*]} ]
+then
+    echo "Number of monitors (${#MONITORS[*]}) doesn't equal number of sources ${#SOURCES[*]}"
+    exit
+fi
+
+
+for index in ${!MONITORS[*]}
+do
+    printf "%4d: %s\n" $index ${array[$index]}
+    case $OS in
+        'mac' )
+            ddcctl -d ${MONITORS[$index]} -i ${SOURCES[$index]}
+            ;;
+        'linux' )
+            sudo ddccontrol -r 0x60 -w $${SOURCES[$index]} dev:${MONITORS[$index]}
+            ;;
+    esac
+done
+
+
+#sudo ddccontrol -r 0x60 -w 15 dev:/dev/i2c-5    
+
