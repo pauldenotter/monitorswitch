@@ -1,81 +1,34 @@
 #!/bin/bash
 
-# Author: github.com/cornercase
+# Original author: github.com/cornercase
+# Modified by: github.com/pauldenotter
 # Written: August 8, 2020
 # License: WTFPL
 
 # Dependecies
+# jq: in order to parse JSON
 #   MacOS
 #      ddcctl - for MacOS - https://github.com/kfix/ddcctl
 #   Linux
 #      ddccontrol - for linux - https://github.com/ddccontrol/ddccontrol
 
-
-
-: '
-My little scratchpad
-# for Dell P2213 monitor
-using ddcctl, input IDs are
- - VGA = 1
- - DVI = 3-14
- - DisplayPort = 15-17
-
-
-Dell P2213 EDID Serial FJ44J3CHAY6S is the left monitor (ie main).  
- - Linux - /dev/i2c-1 = left monitor (VGA)
- - MacOS - 1 = left monitor (DVI)
-Dell P2213 EDID Serial FJ44J26IAJ8S is the right monitor (ie secondary)  
- - Linux - /dev/i2c-5 = right monitor (DVI)
- - MacOS - 2 = right monitor (Displayport)
-
-'
-
-# are we in MacOS or Linux?
 if command -v ddccontrol &> /dev/null
 then
-    echo "ddccontrol found, we're in linux"
-    OS='linux'
-    MONITORS=('/dev/i2c-1' '/dev/i2c-5')
-fi
-
-if command -v ddcctl &> /dev/null
+  OS='linux'
+elif command -v ddcctl &> /dev/null
 then
-    echo "ddcctl found, we're in macos"
-    OS='mac'
-    MONITORS=(1 2)
+  OS='mac'
 fi
 
-# set mac mini inputs to DVI-D on monitor 1, displayport on monitor 2
-if [ $1 = 'mm' ]
-then
-    SOURCES=(3 15)
-fi
+MONITOR=$1
+SOURCES='{"VGA-1": 1,"VGA-2": 2,"DVI-1": 3,"DVI-2": 4,"Composite video 1": 5,"Composite video 2": 6,"S-Video-1": 7,"S-Video-2": 8,"Tuner-1": 9,"Tuner-2": 10,"Tuner-3": 11,"Component video (YPrPb/YCrCb) 1": 12,"Component video (YPrPb/YCrCb) 2": 13,"Component video (YPrPb/YCrCb) 3": 14,"DisplayPort-1": 15,"DisplayPort-2": 16,"HDMI-1": 17,"HDMI-2": 18,"USB-C": 27}'
+SOURCE=$(echo $SOURCES | jq '.["'${2}'"]')
 
-# set desktop inputs to VGA on monitor 1, DVI-D on monitor 2
-if [ $1 = 'dt' ]
-then
-    SOURCES=(1 3)
-fi
-
-if [ ${#MONITORS[*]} -ne ${#SOURCES[*]} ]
-then
-    echo "Number of monitors (${#MONITORS[*]}) doesn't equal number of sources ${#SOURCES[*]}"
-    exit
-fi
-
-
-for index in ${!MONITORS[*]}
-do
-    case $OS in
-        'mac' )
-            ddcctl -d ${MONITORS[$index]} -i ${SOURCES[$index]}
-            ;;
-        'linux' )
-            sudo ddccontrol -r 0x60 -w $${SOURCES[$index]} dev:${MONITORS[$index]}
-            ;;
-    esac
-done
-
-
-#sudo ddccontrol -r 0x60 -w 15 dev:/dev/i2c-5    
-
+case $OS in
+  'mac' )
+    ddcctl -d $MONITOR -i $SOURCE
+    ;;
+  'linux' )
+    sudo ddccontrol -r 0x60 -w $SOURCE dev:$MONITOR
+    ;;
+esac
